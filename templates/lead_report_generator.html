@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Center Lead Report Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0d0d0d;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4a148c 0%, #1a1a1a 100%);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .company-logo {
+            height: 60px;
+            width: auto;
+            filter: brightness(0) invert(1);
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .card {
+            background: #1a1a1a;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            margin-bottom: 2rem;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #4a148c 0%, #2a1a2e 100%);
+            color: white;
+            padding: 1.5rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #9c27b0 0%, #4a148c 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin: 0.5rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(156, 39, 176, 0.4);
+        }
+
+        .btn-success { background: linear-gradient(135deg, #7b1fa2 0%, #4a148c 100%); }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #e0e0e0;
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #555;
+            border-radius: 5px;
+            font-size: 1rem;
+            background: #2a1a2e;
+            color: #e0e0e0;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .report-preview {
+            background: white;
+            color: #333;
+            padding: 2rem;
+            border-radius: 10px;
+            margin: 2rem 0;
+            font-family: Arial, sans-serif;
+        }
+
+        .report-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid #4a148c;
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .report-logo {
+            height: 50px;
+            width: auto;
+        }
+
+        .report-title {
+            text-align: center;
+            flex: 1;
+            margin: 0 2rem;
+        }
+
+        .report-date {
+            text-align: right;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .stat-box {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 5px;
+            text-align: center;
+            border-left: 4px solid #4a148c;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #4a148c;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+
+        .leads-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+        }
+
+        .leads-table th,
+        .leads-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            font-size: 0.9rem;
+        }
+
+        .leads-table th {
+            background: #4a148c;
+            color: white;
+            font-weight: 600;
+        }
+
+        .priority-high { color: #d32f2f; font-weight: bold; }
+        .priority-medium { color: #f57c00; }
+        .priority-low { color: #388e3c; }
+
+        .opportunity-value {
+            font-weight: bold;
+            color: #4a148c;
+        }
+
+        .report-footer {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .summary-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .report-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .report-title {
+                margin: 1rem 0;
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <img src="http://media.licdn.com/dms/image/v2/D560BAQH_HHfEYQHORQ/company-logo_200_200/company-logo_200_200/0/1691173854408/condux_tesmec_inc__logo?e=2147483647&v=beta&t=ndL5qqx0kk_xj2RwGxNWWnHrffxLW2rs3gPf5stahbI" alt="Condux Tesmec Logo" class="company-logo">
+            <h1>Data Center Lead Report Generator</h1>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-file-pdf"></i> Generate Lead Report
+            </div>
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Report Type</label>
+                        <select id="reportType">
+                            <option value="all">All Opportunities</option>
+                            <option value="open">Open Opportunities Only</option>
+                            <option value="high-value">High Value Projects (>$300MW)</option>
+                            <option value="immediate">Immediate Action Required</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Geographic Focus</label>
+                        <select id="geoFocus">
+                            <option value="all">All Regions</option>
+                            <option value="us">United States Only</option>
+                            <option value="canada">Canada Only</option>
+                            <option value="priority">Priority States (ND, TX, PA)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Report Title</label>
+                        <input type="text" id="reportTitle" value="Data Center Opportunities Report">
+                    </div>
+                    <div class="form-group">
+                        <label>Prepared For</label>
+                        <input type="text" id="preparedFor" value="Condux Tesmec Business Development">
+                    </div>
+                </div>
+
+                <button class="btn" onclick="generatePreview()">
+                    <i class="fas fa-eye"></i> Preview Report
+                </button>
+                <button class="btn btn-success" onclick="generatePDF()">
+                    <i class="fas fa-download"></i> Download PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- Report Preview -->
+        <div id="reportPreview" class="report-preview hidden">
+            <div class="report-header">
+                <img src="http://media.licdn.com/dms/image/v2/D560BAQH_HHfEYQHORQ/company-logo_200_200/company-logo_200_200/0/1691173854408/condux_tesmec_inc__logo?e=2147483647&v=beta&t=ndL5qqx0kk_xj2RwGxNWWnHrffxLW2rs3gPf5stahbI" alt="Condux Tesmec Logo" class="report-logo">
+                <div class="report-title">
+                    <h2 id="previewTitle">Data Center Opportunities Report</h2>
+                    <p id="previewSubtitle">Prepared for Condux Tesmec Business Development</p>
+                </div>
+                <div class="report-date">
+                    <div>Generated: <span id="reportDate"></span></div>
+                    <div>Report ID: <span id="reportId"></span></div>
+                </div>
+            </div>
+
+            <div class="summary-stats">
+                <div class="stat-box">
+                    <div class="stat-number" id="totalProjects">28</div>
+                    <div class="stat-label">Total Projects</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="openOpportunities">26</div>
+                    <div class="stat-label">Open Opportunities</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="totalCapacity">6.8 GW</div>
+                    <div class="stat-label">Total Capacity</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="estimatedValue">$340M</div>
+                    <div class="stat-label">Est. Market Value</div>
+                </div>
+            </div>
+
+            <h3>Executive Summary</h3>
+            <p>This report identifies <strong>26 high-priority data center opportunities</strong> across North America representing over <strong>6.8 GW of capacity</strong> and an estimated <strong>$340M in potential transmission line work</strong>. Key findings include:</p>
+            
+            <ul style="margin: 1rem 0 2rem 2rem;">
+                <li><strong>93% of tracked projects</strong> have open contractor opportunities</li>
+                <li><strong>Pennsylvania and Texas</strong> represent the highest concentration of opportunities</li>
+                <li><strong>Meta, Google, and Microsoft</strong> are the most active developers</li>
+                <li><strong>Average project value</strong> ranges from $1M-$25M per facility</li>
+            </ul>
+
+            <h3>Priority Opportunities</h3>
+            <table class="leads-table">
+                <thead>
+                    <tr>
+                        <th>Project Name</th>
+                        <th>Location</th>
+                        <th>Owner</th>
+                        <th>Capacity</th>
+                        <th>Status</th>
+                        <th>Open Roles</th>
+                        <th>Est. Value</th>
+                        <th>Priority</th>
+                    </tr>
+                </thead>
+                <tbody id="leadsTableBody">
+                    <!-- Dynamic content will be inserted here -->
+                </tbody>
+            </table>
+
+            <h3>Market Intelligence</h3>
+            <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 5px; margin: 2rem 0;">
+                <h4>Key Contractor Relationships</h4>
+                <ul style="margin: 1rem 0 0 2rem;">
+                    <li><strong>Turner Construction:</strong> Primary EPC for Amazon/AWS and Google projects</li>
+                    <li><strong>DPR Construction:</strong> Preferred contractor for Meta and Apple facilities</li>
+                    <li><strong>Quanta Services:</strong> Leading line builder across multiple hyperscalers</li>
+                    <li><strong>Mortenson Construction:</strong> Specializes in hyperscale campuses</li>
+                </ul>
+            </div>
+
+            <h3>Recommended Actions</h3>
+            <ol style="margin: 1rem 0 2rem 2rem;">
+                <li><strong>Immediate Outreach:</strong> Contact projects in "Approved" status with no assigned line builder</li>
+                <li><strong>Partnership Development:</strong> Build relationships with Turner Construction and DPR Construction</li>
+                <li><strong>Geographic Focus:</strong> Prioritize Pennsylvania, Texas, and North Dakota markets</li>
+                <li><strong>Capability Positioning:</strong> Emphasize underground cable installation and substation expertise</li>
+            </ol>
+
+            <div class="report-footer">
+                <p><strong>Condux Tesmec Inc.</strong> | Data Center Market Intelligence | Confidential Business Information</p>
+                <p>This report contains proprietary market intelligence. Distribution limited to authorized personnel only.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample lead data (from your data center tracker)
+        const leadData = [
+            {
+                name: "Lancaster AI Campus",
+                location: "Lancaster, PA",
+                owner: "CoreWeave",
+                capacity: "750MW",
+                status: "Under Construction",
+                openRoles: ["Line Builder"],
+                estValue: "$12M",
+                priority: "high"
+            },
+            {
+                name: "Chicago Hyperscale",
+                location: "Chicago, IL",
+                owner: "Meta",
+                capacity: "450MW",
+                status: "Under Construction",
+                openRoles: ["Line Builder"],
+                estValue: "$8M",
+                priority: "high"
+            },
+            {
+                name: "Houston Energy District",
+                location: "Houston, TX",
+                owner: "Microsoft",
+                capacity: "600MW",
+                status: "Permitting",
+                openRoles: ["EPC", "Line Builder"],
+                estValue: "$15M",
+                priority: "high"
+            },
+            {
+                name: "PowerHouse Carlisle",
+                location: "Carlisle, PA",
+                owner: "PowerHouse Data Centers",
+                capacity: "400MW",
+                status: "Approved",
+                openRoles: ["EPC", "Line Builder"],
+                estValue: "$10M",
+                priority: "high"
+            },
+            {
+                name: "Project Jupiter",
+                location: "Las Cruces, NM",
+                owner: "Stack Infrastructure",
+                capacity: "500MW",
+                status: "Permitting",
+                openRoles: ["EPC", "Line Builder"],
+                estValue: "$12M",
+                priority: "medium"
+            },
+            {
+                name: "Indianapolis Logistics Hub",
+                location: "Indianapolis, IN",
+                owner: "Amazon",
+                capacity: "300MW",
+                status: "Under Construction",
+                openRoles: ["Line Builder"],
+                estValue: "$8M",
+                priority: "medium"
+            },
+            {
+                name: "Phoenix West Campus",
+                location: "Phoenix, AZ",
+                owner: "CyrusOne",
+                capacity: "320MW",
+                status: "Permitting",
+                openRoles: ["EPC", "Line Builder"],
+                estValue: "$7M",
+                priority: "medium"
+            },
+            {
+                name: "Vegas Valley DC",
+                location: "Las Vegas, NV",
+                owner: "Switch",
+                capacity: "200MW",
+                status: "Approved",
+                openRoles: ["EPC", "Line Builder"],
+                estValue: "$5M",
+                priority: "medium"
+            }
+        ];
+
+        function generatePreview() {
+            const reportType = document.getElementById('reportType').value;
+            const geoFocus = document.getElementById('geoFocus').value;
+            const reportTitle = document.getElementById('reportTitle').value;
+            const preparedFor = document.getElementById('preparedFor').value;
+
+            // Update report header
+            document.getElementById('previewTitle').textContent = reportTitle;
+            document.getElementById('previewSubtitle').textContent = `Prepared for ${preparedFor}`;
+            document.getElementById('reportDate').textContent = new Date().toLocaleDateString();
+            document.getElementById('reportId').textContent = `RPT-${Date.now().toString().slice(-6)}`;
+
+            // Filter data based on selections
+            let filteredData = leadData;
+            
+            if (reportType === 'high-value') {
+                filteredData = leadData.filter(lead => parseInt(lead.capacity) > 300);
+            } else if (reportType === 'immediate') {
+                filteredData = leadData.filter(lead => lead.status === 'Approved');
+            }
+
+            // Update table
+            const tableBody = document.getElementById('leadsTableBody');
+            tableBody.innerHTML = '';
+
+            filteredData.forEach(lead => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${lead.name}</td>
+                    <td>${lead.location}</td>
+                    <td>${lead.owner}</td>
+                    <td>${lead.capacity}</td>
+                    <td>${lead.status}</td>
+                    <td>${lead.openRoles.join(', ')}</td>
+                    <td class="opportunity-value">${lead.estValue}</td>
+                    <td class="priority-${lead.priority}">${lead.priority.toUpperCase()}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+
+            // Update stats
+            document.getElementById('openOpportunities').textContent = filteredData.length;
+            
+            // Show preview
+            document.getElementById('reportPreview').classList.remove('hidden');
+            document.getElementById('reportPreview').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const reportElement = document.getElementById('reportPreview');
+            
+            if (reportElement.classList.contains('hidden')) {
+                alert('Please generate a preview first!');
+                return;
+            }
+
+            // Create PDF
+            html2canvas(reportElement, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true
+            }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                const imgWidth = 210;
+                const pageHeight = 295;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                let heightLeft = imgHeight;
+                let position = 0;
+
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+
+                while (heightLeft >= 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+
+                const fileName = `Data_Center_Leads_${new Date().toISOString().slice(0, 10)}.pdf`;
+                pdf.save(fileName);
+            });
+        }
+
+        // Generate initial preview on page load
+        window.onload = function() {
+            generatePreview();
+        };
+    </script>
+</body>
+</html>

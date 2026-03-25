@@ -1,0 +1,1669 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Condux Tesmec - Manufacturing Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+    <style>
+        :root {
+            --primary-black: #000000;
+            --primary-dark-blue: #1a237e;
+            --secondary-dark-blue: #283593;
+            --accent-blue: #3f51b5;
+            --text-light: #ffffff;
+            --text-secondary: #e0e0e0;
+            --success-green: #4caf50;
+            --error-red: #f44336;
+            --warning-orange: #ff9800;
+            --background-dark: #121212;
+            --surface-dark: #1e1e1e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--background-dark);
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary-black) 0%, var(--primary-dark-blue) 100%);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-text {
+            display: flex;
+            align-items: center;
+            font-family: 'Arial', sans-serif;
+            letter-spacing: 2px;
+            justify-self: start;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--text-light);
+            justify-self: center;
+        }
+
+        .theme-toggle {
+            justify-self: end;
+        }
+
+        .theme-toggle {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 0.5rem 1rem;
+            color: var(--text-light);
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            justify-self: end;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-tabs {
+            background: var(--surface-dark);
+            padding: 0;
+            display: flex;
+            border-bottom: 2px solid var(--primary-dark-blue);
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 1rem 2rem;
+            background: var(--surface-dark);
+            color: var(--text-secondary);
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .nav-tab:hover {
+            background: var(--secondary-dark-blue);
+            color: var(--text-light);
+        }
+
+        .nav-tab.active {
+            background: var(--primary-dark-blue);
+            color: var(--text-light);
+            border-bottom-color: var(--accent-blue);
+        }
+
+        .main-content {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .project-form {
+            background: var(--surface-dark);
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .project-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--primary-dark-blue);
+        }
+
+        .project-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--text-light);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: var(--accent-blue);
+            color: var(--text-light);
+        }
+
+        .btn-secondary {
+            background: var(--text-secondary);
+            color: var(--background-dark);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .form-section {
+            margin-bottom: 2rem;
+            border: 2px solid var(--secondary-dark-blue);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .form-section.feasible {
+            border-color: var(--success-green);
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+        }
+
+        .form-section.infeasible {
+            border-color: var(--error-red);
+            box-shadow: 0 0 10px rgba(244, 67, 54, 0.3);
+        }
+
+        .section-header {
+            background: var(--primary-dark-blue);
+            padding: 1rem 1.5rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-content {
+            padding: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-light);
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--secondary-dark-blue);
+            border-radius: 5px;
+            background: var(--background-dark);
+            color: var(--text-light);
+            font-size: 1rem;
+        }
+
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .file-upload {
+            border: 2px dashed var(--secondary-dark-blue);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            background: var(--background-dark);
+            transition: all 0.3s ease;
+        }
+
+        .file-upload:hover {
+            border-color: var(--accent-blue);
+            background: rgba(63, 81, 181, 0.1);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            transform: scale(1.2);
+        }
+
+        .vendor-list {
+            background: var(--background-dark);
+            border-radius: 5px;
+            padding: 1rem;
+        }
+
+        .vendor-item {
+            background: var(--surface-dark);
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--accent-blue);
+        }
+
+        .progress-updates {
+            background: var(--background-dark);
+            border-radius: 5px;
+            padding: 1rem;
+        }
+
+        .progress-item {
+            background: var(--surface-dark);
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--success-green);
+        }
+
+        .progress-date {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .show-older {
+            color: var(--accent-blue);
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 0.9rem;
+        }
+
+        .project-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .project-card {
+            background: var(--surface-dark);
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            border-left: 4px solid var(--accent-blue);
+            transition: all 0.3s ease;
+        }
+
+        .project-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        }
+
+        .project-card.needs-attention {
+            border-left-color: var(--warning-orange);
+        }
+
+        .project-card.completed {
+            border-left-color: var(--success-green);
+        }
+
+        .project-card.closed {
+            border-left-color: var(--error-red);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-light);
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .status-concept {
+            background: var(--secondary-dark-blue);
+        }
+
+        .status-progress {
+            background: var(--warning-orange);
+        }
+
+        .status-completed {
+            background: var(--success-green);
+        }
+
+        .status-closed {
+            background: var(--error-red);
+        }
+
+        /* 3D Viewer Styles */
+        .viewer-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+        }
+
+        .viewer-modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .viewer-content {
+            background: var(--surface-dark);
+            border-radius: 10px;
+            width: 90%;
+            height: 90%;
+            max-width: 1200px;
+            max-height: 800px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .viewer-header {
+            background: var(--primary-dark-blue);
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .viewer-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-light);
+        }
+
+        .viewer-close {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+        }
+
+        .viewer-body {
+            flex: 1;
+            position: relative;
+            background: var(--viewer-bg, #2a2a2a);
+        }
+
+        #threejs-container {
+            width: 100%;
+            height: 100%;
+        }
+
+        .viewer-controls {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: var(--viewer-overlay-bg, rgba(0, 0, 0, 0.7));
+            border-radius: 5px;
+            padding: 1rem;
+            color: var(--viewer-overlay-text, #ffffff);
+        }
+
+        .viewer-info {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            background: var(--viewer-overlay-bg, rgba(0, 0, 0, 0.7));
+            border-radius: 5px;
+            padding: 1rem;
+            color: var(--viewer-overlay-text, #ffffff);
+            font-size: 0.9rem;
+        }
+
+        .file-item {
+            background: var(--surface-dark);
+            border: 1px solid var(--secondary-dark-blue);
+            border-radius: 5px;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .file-item:hover {
+            background: var(--secondary-dark-blue);
+        }
+
+        .file-name {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .view-3d-btn {
+            background: var(--accent-blue);
+            color: var(--text-light);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .view-3d-btn:hover {
+            background: var(--primary-dark-blue);
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .project-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                padding: 1rem;
+            }
+
+            .main-content {
+                padding: 1rem;
+            }
+
+            .viewer-content {
+                width: 95%;
+                height: 95%;
+            }
+
+            .viewer-controls,
+            .viewer-info {
+                position: relative;
+                margin: 0.5rem;
+            }
+        }
+
+        /* Light Theme Overrides */
+        body.light-theme {
+            --primary-black: #ffffff;
+            --primary-dark-blue: #1976d2;
+            --secondary-dark-blue: #1565c0;
+            --accent-blue: #2196f3;
+            --text-light: #333333;
+            --text-secondary: #666666;
+            --success-green: #4caf50;
+            --error-red: #f44336;
+            --warning-orange: #ff9800;
+            --background-dark: #f5f5f5;
+            --surface-dark: #ffffff;
+            --viewer-bg: #f0f0f0;
+            --viewer-overlay-bg: rgba(255, 255, 255, 0.9);
+            --viewer-overlay-text: #333333;
+        }
+
+        body.light-theme .header {
+            background: linear-gradient(135deg, #ffffff 0%, #1976d2 100%);
+            color: #333333;
+        }
+
+        body.light-theme .logo-text span:first-child {
+            color: #00acc1;
+        }
+
+        body.light-theme .logo-text span:last-child {
+            color: #1976d2;
+        }
+
+        body.light-theme .nav-tabs {
+            background: #ffffff;
+            border-bottom: 2px solid #1976d2;
+        }
+
+        body.light-theme .nav-tab {
+            background: #ffffff;
+            color: #666666;
+        }
+
+        body.light-theme .nav-tab:hover {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        body.light-theme .nav-tab.active {
+            background: #1976d2;
+            color: #ffffff;
+            border-bottom-color: #2196f3;
+        }
+
+        body.light-theme .form-section {
+            border-color: #1976d2;
+        }
+
+        body.light-theme .section-header {
+            background: #1976d2;
+        }
+
+        body.light-theme .form-group input,
+        body.light-theme .form-group textarea,
+        body.light-theme .form-group select {
+            border-color: #1976d2;
+            background: #ffffff;
+            color: #333333;
+        }
+
+        body.light-theme .file-upload {
+            border-color: #1976d2;
+            background: #f8f9fa;
+        }
+
+        body.light-theme .file-upload:hover {
+            border-color: #2196f3;
+            background: rgba(33, 150, 243, 0.1);
+        }
+
+        body.light-theme .vendor-item,
+        body.light-theme .progress-item {
+            background: #f8f9fa;
+            border-left-color: #2196f3;
+        }
+
+        body.light-theme .file-item {
+            background: #f8f9fa;
+            border-color: #1976d2;
+        }
+
+        body.light-theme .file-item:hover {
+            background: #e3f2fd;
+        }
+
+        body.light-theme .theme-toggle {
+            background: rgba(0, 0, 0, 0.1);
+            border-color: rgba(0, 0, 0, 0.2);
+            color: #333333;
+        }
+
+        body.light-theme .theme-toggle:hover {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        body.light-theme .form-section.feasible {
+            border-color: #4caf50;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+        }
+
+        body.light-theme .form-section.infeasible {
+            border-color: #f44336;
+            box-shadow: 0 0 10px rgba(244, 67, 54, 0.3);
+        }
+
+        /* New Vendor Form Styles */
+        .new-vendor-form {
+            background: var(--background-dark);
+            border: 2px solid var(--accent-blue);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        body.light-theme .new-vendor-form {
+            background: #f8f9fa;
+            border-color: #2196f3;
+        }
+    </style>
+</head>
+< body>
+    <div class="header">
+        <div class="logo-text">
+            <span style="color: #00bcd4; font-weight: bold; font-size: 1.8rem;">CONDUX</span>
+            <span style="color: #666; margin: 0 0.5rem;">|</span>
+            <span style="color: #3f51b5; font-weight: bold; font-size: 1.8rem;">TESMEC</span>
+        </div>
+        <h1>Manufacturing Dashboard</h1>
+        <button class="theme-toggle" onclick="toggleTheme()" id="theme-toggle">
+            <i class="fas fa-sun"></i> Light Mode
+        </button>
+    </div>
+
+    <div class="nav-tabs">
+        <button class="nav-tab active" onclick="showTab('new-project')">
+            <i class="fas fa-plus"></i> New Project
+        </button>
+        <button class="nav-tab" onclick="showTab('current-projects')">
+            <i class="fas fa-tasks"></i> Current/Open Projects
+        </button>
+        <button class="nav-tab" onclick="showTab('closed-projects')">
+            <i class="fas fa-archive"></i> Closed Projects
+        </button>
+        <button class="nav-tab" onclick="showTab('needs-attention')">
+            <i class="fas fa-exclamation-triangle"></i> Needs Attention
+        </button>
+    </div>
+
+    <div class="main-content">
+        <!-- New Project Tab -->
+        <div id="new-project" class="tab-content">
+            <div class="project-form">
+                <div class="project-header">
+                    <div>
+                        <div class="project-number">Project: CT0000001</div>
+                        <div style="margin-top: 0.5rem;">
+                            <label style="color: var(--text-secondary); font-size: 0.9rem;">Product Description:</label>
+                            <input type="text" placeholder="Enter product description..."
+                                style="margin-top: 0.25rem; max-width: 400px;">
+                        </div>
+                    </div>
+                    
+                    <!-- AI Insights Panel -->
+                    <div class="ai-insights-panel" style="background: var(--background-dark); border: 2px solid var(--accent-blue); border-radius: 8px; padding: 1rem; max-width: 300px;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                            <i class="fas fa-robot" style="color: var(--accent-blue); font-size: 1.2rem;"></i>
+                            <strong style="color: var(--accent-blue);">AI Project Insights</strong>
+                        </div>
+                        <div style="font-size: 0.9rem; line-height: 1.4;">
+                            <div style="margin-bottom: 0.5rem;">
+                                <span style="color: var(--success-green);">●</span> Project complexity: Medium
+                            </div>
+                            <div style="margin-bottom: 0.5rem;">
+                                <span style="color: var(--warning-orange);">●</span> Risk factors: 2 identified
+                            </div>
+                            <div style="margin-bottom: 0.5rem;">
+                                <span style="color: var(--accent-blue);">●</span> Success probability: 92%
+                            </div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.75rem; font-style: italic;">
+                                "Similar projects completed 15% faster with Tesmec as primary vendor"
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Project
+                        </button>
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Concept Section -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <i class="fas fa-lightbulb"></i> Concept
+                    </div>
+                    <div class="section-content">
+                        <div class="form-group">
+                            <label>Customer Request</label>
+                            <textarea
+                                placeholder="Describe the customer's requirements and specifications..."></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Customer Number</label>
+                                <input type="text" placeholder="CUST-001">
+                            </div>
+                            <div class="form-group">
+                                <label>Main Contact</label>
+                                <input type="text" placeholder="John Smith">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Contact Email</label>
+                                <input type="email" placeholder="john.smith@company.com">
+                            </div>
+                            <div class="form-group">
+                                <label>Desired Completion Date</label>
+                                <input type="date" id="completion-date">
+                                
+                                <!-- AI Timeline Prediction -->
+                                <div class="ai-prediction" style="margin-top: 0.5rem; padding: 0.75rem; background: var(--secondary-dark-blue); border-radius: 5px; border-left: 4px solid var(--accent-blue);">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                        <i class="fas fa-brain" style="color: var(--accent-blue);"></i>
+                                        <strong>AI Timeline Prediction</strong>
+                                    </div>
+                                    <div id="timeline-prediction">
+                                        <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                                            Predicted completion: <span style="color: var(--success-green); font-weight: bold;">March 22, 2025</span> (±3 days)
+                                        </div>
+                                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                                            Based on similar projects: 85% confidence
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Customer Attachments</label>
+                            <div class="file-upload" id="customer-upload">
+                                <i class="fas fa-cloud-upload-alt"
+                                    style="font-size: 2rem; color: var(--accent-blue); margin-bottom: 1rem;"></i>
+                                <p>Drag & drop files here or click to browse</p>
+                                <p style="font-size: 0.9rem; color: var(--text-secondary);">Supported: PDF, JPG, PNG,
+                                    DWG, STEP</p>
+                                <div class="ai-processing" id="ai-processing" style="display: none; margin-top: 1rem; padding: 1rem; background: var(--accent-blue); border-radius: 5px; color: white;">
+                                    <i class="fas fa-robot"></i> AI Processing Document...
+                                    <div class="progress-bar" style="width: 100%; height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px; margin-top: 0.5rem;">
+                                        <div class="progress-fill" style="height: 100%; background: white; border-radius: 2px; width: 0%; transition: width 2s ease;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- AI Analysis Results -->
+                            <div id="ai-analysis-results" style="display: none; margin-top: 1rem; padding: 1rem; background: var(--success-green); border-radius: 5px; color: white;">
+                                <h4><i class="fas fa-brain"></i> AI Document Analysis Complete</h4>
+                                <div id="extracted-info"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Vendors Section -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <i class="fas fa-handshake"></i> Vendors
+                    </div>
+                    <div class="section-content">
+                        <button class="btn btn-primary" style="margin-bottom: 1rem;">
+                            <i class="fas fa-plus"></i> Add Vendor
+                        </button>
+
+                        <div class="vendor-list">
+                            <div class="vendor-item">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Vendor Name</label>
+                                        <input type="text" value="Tesmec">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Quote Amount</label>
+                                        <input type="number" value="15000" placeholder="0.00" onchange="analyzeQuote()">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Lead Time (Days)</label>
+                                        <input type="number" value="30">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Quote Date</label>
+                                        <input type="date" value="2025-01-15">
+                                    </div>
+                                </div>
+                                
+                                <!-- AI Vendor Analysis -->
+                                <div class="ai-vendor-analysis" style="margin-top: 1rem; padding: 0.75rem; background: var(--background-dark); border-radius: 5px; border: 1px solid var(--accent-blue);">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                        <i class="fas fa-chart-line" style="color: var(--accent-blue);"></i>
+                                        <strong>AI Vendor Analysis</strong>
+                                    </div>
+                                    <div style="font-size: 0.9rem;">
+                                        <div style="color: var(--success-green);">✓ Price: 12% below market average</div>
+                                        <div style="color: var(--success-green);">✓ Lead time: Competitive (30 days)</div>
+                                        <div style="color: var(--warning-orange);">⚠ Risk: Medium (new vendor)</div>
+                                        <div style="margin-top: 0.5rem; font-weight: bold; color: var(--accent-blue);">
+                                            AI Recommendation: APPROVE - Good value proposition
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Quote PDF</label>
+                                    <div class="file-upload" style="padding: 1rem;">
+                                        <i class="fas fa-file-pdf"></i> Upload Quote PDF
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Issued Purchase Orders</label>
+                                    <div class="file-upload" style="padding: 1rem;">
+                                        <i class="fas fa-file-invoice"></i> Upload Issued PO PDFs
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Engineering Section -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <i class="fas fa-drafting-compass"></i> Engineering
+                    </div>
+                    <div class="section-content">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Concept Drawings</label>
+                                <div class="file-upload">
+                                    <i class="fas fa-pencil-ruler"></i>
+                                    <p>Upload Concept Drawings</p>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Fabrication Drawings</label>
+                                <div class="file-upload">
+                                    <i class="fas fa-tools"></i>
+                                    <p>Upload Fabrication Drawings</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Vendor Part Drawings</label>
+                                <div class="file-upload">
+                                    <i class="fas fa-cogs"></i>
+                                    <p>Upload Vendor Drawings</p>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>STEP Files & Assembly</label>
+                                <div class="file-upload">
+                                    <i class="fas fa-cube"></i>
+                                    <p>Upload STEP Files</p>
+                                </div>
+
+                                <!-- Sample uploaded STEP files -->
+                                <div style="margin-top: 1rem;">
+                                    <div class="file-item">
+                                        <div class="file-name">
+                                            <i class="fas fa-cube" style="color: var(--accent-blue);"></i>
+                                            <span>bracket_assembly.step</span>
+                                            <span style="font-size: 0.8rem; color: var(--text-secondary);">(2.3
+                                                MB)</span>
+                                        </div>
+                                        <button class="view-3d-btn" onclick="open3DViewer('bracket_assembly.step')">
+                                            <i class="fas fa-eye"></i> View 3D
+                                        </button>
+                                    </div>
+
+                                    <div class="file-item">
+                                        <div class="file-name">
+                                            <i class="fas fa-cube" style="color: var(--accent-blue);"></i>
+                                            <span>mounting_plate.step</span>
+                                            <span style="font-size: 0.8rem; color: var(--text-secondary);">(1.8
+                                                MB)</span>
+                                        </div>
+                                        <button class="view-3d-btn" onclick="open3DViewer('mounting_plate.step')">
+                                            <i class="fas fa-eye"></i> View 3D
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Vendor Part Numbers & Descriptions</label>
+                            <button class="btn btn-primary"
+                                style="margin-bottom: 1rem; font-size: 0.9rem; padding: 0.5rem 1rem;">
+                                <i class="fas fa-plus"></i> Add Part Number
+                            </button>
+
+                            <div class="vendor-list">
+                                <div class="vendor-item">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Vendor</label>
+                                            <select onchange="handleVendorChange(this, 'new-vendor-form-1')">
+                                                <option>Tesmec</option>
+                                                <option>Condux</option>
+                                                <option>Kato Manufacturing</option>
+                                                <option>Filter Built</option>
+                                                <option>Other...</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <!-- New Vendor Form (hidden by default) -->
+                                    <div id="new-vendor-form-1" class="new-vendor-form" style="display: none;">
+                                        <div
+                                            style="background: var(--secondary-dark-blue); padding: 0.75rem; margin: 1rem 0 0.5rem 0; border-radius: 5px;">
+                                            <strong><i class="fas fa-plus-circle"></i> Add New Vendor</strong>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Vendor Name</label>
+                                                <input type="text" placeholder="Enter vendor name">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Contact Person</label>
+                                                <input type="text" placeholder="Primary contact name">
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Email</label>
+                                                <input type="email" placeholder="contact@vendor.com">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Phone</label>
+                                                <input type="tel" placeholder="(555) 123-4567">
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Address</label>
+                                                <textarea placeholder="Vendor address..."
+                                                    style="height: 60px;"></textarea>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Specialties</label>
+                                                <textarea placeholder="Manufacturing capabilities, specialties..."
+                                                    style="height: 60px;"></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="form-actions" style="margin-top: 1rem;">
+                                            <button type="button" class="btn btn-primary"
+                                                onclick="saveNewVendor('new-vendor-form-1')">
+                                                <i class="fas fa-save"></i> Save Vendor
+                                            </button>
+                                            <button type="button" class="btn btn-secondary"
+                                                onclick="cancelNewVendor('new-vendor-form-1')">
+                                                <i class="fas fa-times"></i> Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Part Number</label>
+                                            <input type="text" placeholder="e.g. ABC-12345" value="ABC-12345">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Part Description</label>
+                                        <textarea placeholder="Describe the part specifications and function..."
+                                            style="height: 60px;">Custom machined aluminum bracket, 6061-T6, anodized finish</textarea>
+                                    </div>
+                                </div>
+
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Proof of Concept Section -->
+                <div class="form-section feasible" id="proof-section">
+                    <div class="section-header">
+                        <i class="fas fa-check-circle"></i> Proof of Concept
+                    </div>
+                    <div class="section-content">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="feasible" checked onchange="toggleFeasibility()">
+                            <label for="feasible">Feasible</label>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Feasibility Notes</label>
+                            <textarea
+                                placeholder="Engineering analysis and feasibility assessment...">Project appears technically feasible. Initial prototype testing shows positive results.</textarea>
+                        </div>
+
+                        <button class="btn" style="background: var(--error-red); color: var(--text-light);"
+                            onclick="closeProject()">
+                            <i class="fas fa-times-circle"></i> Close Project (Infeasible)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- In Progress Section -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <i class="fas fa-play-circle"></i> In Progress
+                    </div>
+                    <div class="section-content">
+
+
+                        <div class="form-group">
+                            <label>Progress Updates</label>
+                            <div class="progress-updates">
+                                <div class="progress-item">
+                                    <div class="progress-date">January 21, 2025 - 2:30 PM</div>
+                                    <p><strong>Update:</strong> Initial materials ordered from Tesmec.
+                                        Expected delivery in 2 weeks.</p>
+                                    <p><strong>Next Steps:</strong> Prepare fabrication area and schedule machining
+                                        operations.</p>
+                                </div>
+
+                                <div class="progress-item">
+                                    <div class="progress-date">January 18, 2025 - 10:15 AM</div>
+                                    <p><strong>Update:</strong> Engineering drawings approved by customer. Ready to
+                                        proceed with procurement.</p>
+                                    <p><strong>Next Steps:</strong> Issue purchase orders to selected vendors.</p>
+                                </div>
+
+                                <div class="progress-item">
+                                    <div class="progress-date">January 15, 2025 - 4:45 PM</div>
+                                    <p><strong>Update:</strong> Received vendor quotes. Tesmec selected as
+                                        primary supplier.</p>
+                                    <p><strong>Next Steps:</strong> Finalize engineering drawings and get customer
+                                        approval.</p>
+                                </div>
+
+                                <div class="show-older" onclick="toggleOlderUpdates()">
+                                    <i class="fas fa-chevron-down"></i> Show older updates
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Add Progress Update</label>
+                            <textarea placeholder="Enter progress update..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Next Steps</label>
+                            <textarea placeholder="Describe next actions and delegated tasks..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Delegate To</label>
+                            <select>
+                                <option value="">Select person to delegate...</option>
+                                <option value="dirk-courrier">Dirk Courrier</option>
+                                <option value="logan-bristol">Logan Bristol</option>
+                                <option value="service-department">Service Department</option>
+                            </select>
+                        </div>
+
+                        <button class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Add Update
+                        </button>
+                    </div>
+                </div>
+                <!-- Complete Project Section -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <i class="fas fa-flag-checkered"></i> Complete Project
+                    </div>
+                    <div class="section-content">
+                        <div class="form-group">
+                            <label>Project Summary</label>
+                            <textarea
+                                placeholder="Write a comprehensive summary of the completed project..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Completion Photos & Documentation</label>
+                            <div class="file-upload">
+                                <i class="fas fa-camera"></i>
+                                <p>Upload Final Photos & Documentation</p>
+                            </div>
+                        </div>
+
+                        <button class="btn" style="background: var(--success-green); color: var(--text-light);">
+                            <i class="fas fa-check"></i> Mark Project Complete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current/Open Projects Tab -->
+        <div id="current-projects" class="tab-content" style="display: none;">
+            <h2 style="margin-bottom: 2rem;">Current/Open Projects</h2>
+            <div class="project-grid">
+                <div class="project-card">
+                    <div class="card-header">
+                        <div class="card-title">CT0000001</div>
+                        <div class="status-badge status-progress">In Progress</div>
+                    </div>
+                    <p><strong>Customer:</strong> Acme Corporation</p>
+                    <p><strong>Contact:</strong> John Smith</p>
+                    <p><strong>Due Date:</strong> March 15, 2025</p>
+                    <p><strong>Last Update:</strong> January 21, 2025</p>
+                </div>
+
+                <div class="project-card">
+                    <div class="card-header">
+                        <div class="card-title">CT0000002</div>
+                        <div class="status-badge status-concept">Concept</div>
+                    </div>
+                    <p><strong>Customer:</strong> Tech Industries</p>
+                    <p><strong>Contact:</strong> Sarah Johnson</p>
+                    <p><strong>Due Date:</strong> April 10, 2025</p>
+                    <p><strong>Last Update:</strong> January 20, 2025</p>
+                </div>
+
+                <div class="project-card needs-attention">
+                    <div class="card-header">
+                        <div class="card-title">CT0000003</div>
+                        <div class="status-badge status-progress">In Progress</div>
+                    </div>
+                    <p><strong>Customer:</strong> Manufacturing Co</p>
+                    <p><strong>Contact:</strong> Mike Wilson</p>
+                    <p><strong>Due Date:</strong> February 1, 2025</p>
+                    <p><strong>Last Update:</strong> January 10, 2025</p>
+                    <p style="color: var(--warning-orange);"><i class="fas fa-exclamation-triangle"></i> Overdue</p>
+                </div>
+            </div>
+        </div>
+        <!-- Closed Projects Tab -->
+        <div id="closed-projects" class="tab-content" style="display: none;">
+            <h2 style="margin-bottom: 2rem;">Closed Projects</h2>
+            <div class="project-grid">
+                <div class="project-card completed">
+                    <div class="card-header">
+                        <div class="card-title">CT0000004</div>
+                        <div class="status-badge status-completed">Completed</div>
+                    </div>
+                    <p><strong>Customer:</strong> Global Systems</p>
+                    <p><strong>Contact:</strong> Lisa Chen</p>
+                    <p><strong>Completed:</strong> January 15, 2025</p>
+                    <p><strong>Duration:</strong> 45 days</p>
+                </div>
+
+                <div class="project-card closed">
+                    <div class="card-header">
+                        <div class="card-title">CT0000005</div>
+                        <div class="status-badge status-closed">Closed</div>
+                    </div>
+                    <p><strong>Customer:</strong> Beta Corp</p>
+                    <p><strong>Contact:</strong> Tom Brown</p>
+                    <p><strong>Closed:</strong> January 12, 2025</p>
+                    <p><strong>Reason:</strong> Infeasible</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Needs Attention Tab -->
+        <div id="needs-attention" class="tab-content" style="display: none;">
+            <h2 style="margin-bottom: 2rem;">Projects Needing Attention</h2>
+            <div class="project-grid">
+                <div class="project-card needs-attention">
+                    <div class="card-header">
+                        <div class="card-title">CT0000003</div>
+                        <div class="status-badge status-progress">In Progress</div>
+                    </div>
+                    <p><strong>Customer:</strong> Manufacturing Co</p>
+                    <p><strong>Issue:</strong> Overdue by 20 days</p>
+                    <p><strong>Last Update:</strong> January 10, 2025</p>
+                    <p style="color: var(--error-red);"><i class="fas fa-exclamation-circle"></i> Requires immediate
+                        attention</p>
+                </div>
+
+                <div class="project-card needs-attention">
+                    <div class="card-header">
+                        <div class="card-title">CT0000006</div>
+                        <div class="status-badge status-concept">Concept</div>
+                    </div>
+                    <p><strong>Customer:</strong> Delta Industries</p>
+                    <p><strong>Issue:</strong> No updates in 15 days</p>
+                    <p><strong>Last Update:</strong> January 6, 2025</p>
+                    <p style="color: var(--warning-orange);"><i class="fas fa-clock"></i> Stalled project</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3D Viewer Modal -->
+    <div id="viewer-modal" class="viewer-modal">
+        <div class="viewer-content">
+            <div class="viewer-header">
+                <div class="viewer-title" id="viewer-title">3D Model Viewer</div>
+                <button class="viewer-close" onclick="close3DViewer()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="viewer-body">
+                <div id="threejs-container"></div>
+
+                <div class="viewer-controls">
+                    <div style="margin-bottom: 0.5rem;"><strong>Controls:</strong></div>
+                    <div>• Left Click + Drag: Rotate</div>
+                    <div>• Right Click + Drag: Pan</div>
+                    <div>• Scroll: Zoom</div>
+                    <div>• Double Click: Reset View</div>
+                </div>
+
+                <div class="viewer-info" id="viewer-info">
+                    <div><strong>Model Info:</strong></div>
+                    <div id="model-details">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabName) {
+            // Hide all tab contents
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => tab.style.display = 'none');
+
+            // Remove active class from all nav tabs
+            const navTabs = document.querySelectorAll('.nav-tab');
+            navTabs.forEach(tab => tab.classList.remove('active'));
+
+            // Show selected tab
+            document.getElementById(tabName).style.display = 'block';
+
+            // Find and activate the correct nav tab
+            const clickedTab = document.querySelector(`[onclick="showTab('${tabName}')"]`);
+            if (clickedTab) {
+                clickedTab.classList.add('active');
+            }
+        }
+
+        function toggleFeasibility() {
+            const checkbox = document.getElementById('feasible');
+            const section = document.getElementById('proof-section');
+
+            if (checkbox.checked) {
+                section.classList.remove('infeasible');
+                section.classList.add('feasible');
+            } else {
+                section.classList.remove('feasible');
+                section.classList.add('infeasible');
+            }
+        }
+
+        function closeProject() {
+            const section = document.getElementById('proof-section');
+            section.classList.remove('feasible');
+            section.classList.add('infeasible');
+            document.getElementById('feasible').checked = false;
+            alert('Project marked as infeasible and will be moved to Closed Projects.');
+        }
+
+        function toggleOlderUpdates() {
+            alert('Older updates would be shown here in the full application.');
+        }
+
+        function toggleTheme() {
+            const body = document.body;
+            const toggleBtn = document.getElementById('theme-toggle');
+
+            if (body.classList.contains('light-theme')) {
+                // Switch to dark theme
+                body.classList.remove('light-theme');
+                toggleBtn.innerHTML = '<i class="fas fa-sun"></i> Light Mode';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                // Switch to light theme
+                body.classList.add('light-theme');
+                toggleBtn.innerHTML = '<i class="fas fa-moon"></i> Dark Mode';
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        // Load saved theme on page load
+        window.addEventListener('DOMContentLoaded', function () {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-theme');
+                document.getElementById('theme-toggle').innerHTML = '<i class="fas fa-moon"></i> Dark Mode';
+            }
+        });
+
+        // 3D Viewer Variables
+        let scene, camera, renderer, controls;
+        let currentModel = null;
+
+        function open3DViewer(filename) {
+            document.getElementById('viewer-modal').classList.add('show');
+            document.getElementById('viewer-title').textContent = `3D Model Viewer - ${filename}`;
+
+            // Initialize 3D viewer
+            init3DViewer();
+
+            // Load the appropriate model based on filename
+            if (filename.includes('bracket')) {
+                loadBracketModel();
+            } else if (filename.includes('mounting')) {
+                loadMountingPlateModel();
+            }
+        }
+
+        function close3DViewer() {
+            document.getElementById('viewer-modal').classList.remove('show');
+
+            // Clean up 3D scene
+            if (renderer) {
+                const container = document.getElementById('threejs-container');
+                container.removeChild(renderer.domElement);
+                renderer.dispose();
+                renderer = null;
+            }
+        }
+
+        function init3DViewer() {
+            const container = document.getElementById('threejs-container');
+
+            // Scene setup
+            scene = new THREE.Scene();
+
+            // Set background color based on theme
+            const isLightTheme = document.body.classList.contains('light-theme');
+            scene.background = new THREE.Color(isLightTheme ? 0xf0f0f0 : 0x2a2a2a);
+
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(5, 5, 5);
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // Controls setup
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // Lighting setup
+            const ambientLight = new THREE.AmbientLight(0x404040, isLightTheme ? 0.8 : 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, isLightTheme ? 1.0 : 0.8);
+            directionalLight.position.set(10, 10, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+
+            const directionalLight2 = new THREE.DirectionalLight(0xffffff, isLightTheme ? 0.6 : 0.4);
+            directionalLight2.position.set(-10, -10, -5);
+            scene.add(directionalLight2);
+
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize, false);
+
+            // Start animation loop
+            animate();
+        }
+
+        function loadBracketModel() {
+            // Create a sample bracket geometry (simulating converted STEP file)
+            const geometry = new THREE.Group();
+
+            // Main bracket body
+            const mainBody = new THREE.BoxGeometry(4, 0.5, 2);
+            const mainMaterial = new THREE.MeshPhongMaterial({ color: 0x4a90e2 });
+            const mainMesh = new THREE.Mesh(mainBody, mainMaterial);
+            mainMesh.castShadow = true;
+            geometry.add(mainMesh);
+
+            // Mounting holes
+            const holeGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.6, 16);
+            const holeMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+
+            const hole1 = new THREE.Mesh(holeGeometry, holeMaterial);
+            hole1.position.set(-1.5, 0, 0);
+            hole1.rotation.z = Math.PI / 2;
+            geometry.add(hole1);
+
+            const hole2 = new THREE.Mesh(holeGeometry, holeMaterial);
+            hole2.position.set(1.5, 0, 0);
+            hole2.rotation.z = Math.PI / 2;
+            geometry.add(hole2);
+
+            // Vertical mounting tab
+            const tabGeometry = new THREE.BoxGeometry(1, 2, 0.3);
+            const tabMesh = new THREE.Mesh(tabGeometry, mainMaterial);
+            tabMesh.position.set(0, 1.25, 0);
+            tabMesh.castShadow = true;
+            geometry.add(tabMesh);
+
+            // Add to scene
+            scene.add(geometry);
+            currentModel = geometry;
+
+            // Update model info
+            document.getElementById('model-details').innerHTML = `
+    <div>File: bracket_assembly.step</div>
+    <div>Material: Aluminum 6061-T6</div>
+    <div>Dimensions: 4" x 2" x 0.5"</div>
+    <div>Weight: ~0.8 lbs</div>
+    <div>Finish: Anodized</div>
+    `;
+        }
+
+        function loadMountingPlateModel() {
+            // Create a sample mounting plate geometry
+            const geometry = new THREE.Group();
+
+            // Main plate
+            const plateGeometry = new THREE.BoxGeometry(6, 4, 0.25);
+            const plateMaterial = new THREE.MeshPhongMaterial({ color: 0x7b68ee });
+            const plateMesh = new THREE.Mesh(plateGeometry, plateMaterial);
+            plateMesh.castShadow = true;
+            geometry.add(plateMesh);
+
+            // Corner holes
+            const holeGeometry = new THREE.CylinderGeometry(0.15, 0.15, 0.3, 16);
+            const holeMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+
+            const positions = [
+                [-2.5, -1.5, 0], [2.5, -1.5, 0],
+                [-2.5, 1.5, 0], [2.5, 1.5, 0]
+            ];
+
+            positions.forEach(pos => {
+                const hole = new THREE.Mesh(holeGeometry, holeMaterial);
+                hole.position.set(pos[0], pos[1], pos[2]);
+                geometry.add(hole);
+            });
+
+            // Center cutout
+            const cutoutGeometry = new THREE.BoxGeometry(2, 1.5, 0.3);
+            const cutoutMesh = new THREE.Mesh(cutoutGeometry, holeMaterial);
+            geometry.add(cutoutMesh);
+
+            // Add to scene
+            scene.add(geometry);
+            currentModel = geometry;
+
+            // Update model info
+            document.getElementById('model-details').innerHTML = `
+    <div>File: mounting_plate.step</div>
+    <div>Material: Steel A36</div>
+    <div>Dimensions: 6" x 4" x 0.25"</div>
+    <div>Weight: ~2.1 lbs</div>
+    <div>Finish: Powder Coated</div>
+    `;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (controls) {
+                controls.update();
+            }
+
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }
+
+        function onWindowResize() {
+            if (camera && renderer) {
+                const container = document.getElementById('threejs-container');
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            }
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('viewer-modal').addEventListener('click', function (e) {
+            if (e.target === this) {
+                close3DViewer();
+            }
+        });
+
+        // AI Document Processing Simulation
+        document.getElementById('customer-upload').addEventListener('click', function() {
+            simulateDocumentUpload();
+        });
+
+        function simulateDocumentUpload() {
+            const processing = document.getElementById('ai-processing');
+            const results = document.getElementById('ai-analysis-results');
+            const extractedInfo = document.getElementById('extracted-info');
+            
+            // Show processing animation
+            processing.style.display = 'block';
+            const progressBar = processing.querySelector('.progress-fill');
+            
+            // Animate progress bar
+            setTimeout(() => progressBar.style.width = '30%', 200);
+            setTimeout(() => progressBar.style.width = '60%', 800);
+            setTimeout(() => progressBar.style.width = '100%', 1400);
+            
+            // Show results after processing
+            setTimeout(() => {
+                processing.style.display = 'none';
+                results.style.display = 'block';
+                
+                extractedInfo.innerHTML = `
+                    <div style="margin-bottom: 0.5rem;"><strong>Extracted Information:</strong></div>
+                    <div>• Material: Aluminum 6061-T6</div>
+                    <div>• Quantity: 50 pieces</div>
+                    <div>• Tolerance: ±0.005"</div>
+                    <div>• Finish: Anodized</div>
+                    <div>• Estimated Cost: $2,400 - $2,800</div>
+                `;
+            }, 2000);
+        }
+
+        // AI Quote Analysis
+        function analyzeQuote() {
+            // Simulate AI analysis of quote data
+            console.log('AI analyzing quote...');
+        }
+
+        // AI Timeline Prediction Update
+        function updateTimelinePrediction() {
+            const prediction = document.getElementById('timeline-prediction');
+            const today = new Date();
+            const predictedDate = new Date(today.getTime() + (65 * 24 * 60 * 60 * 1000)); // 65 days from now
+            
+            prediction.innerHTML = `
+                <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                    Predicted completion: <span style="color: var(--success-green); font-weight: bold;">${predictedDate.toLocaleDateString()}</span> (±3 days)
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                    Based on similar projects: 85% confidence
+                </div>
+            `;
+        }
+
+        // Initialize AI features on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            updateTimelinePrediction();
+        });
+
+        // Vendor Management Functions
+        function handleVendorChange(selectElement, formId) {
+            const newVendorForm = document.getElementById(formId);
+
+            if (selectElement.value === 'Other...') {
+                newVendorForm.style.display = 'block';
+            } else {
+                newVendorForm.style.display = 'none';
+            }
+        }
+
+        function saveNewVendor(formId) {
+            const form = document.getElementById(formId);
+            const vendorName = form.querySelector('input[placeholder="Enter vendor name"]').value;
+
+            if (!vendorName.trim()) {
+                alert('Please enter a vendor name.');
+                return;
+            }
+
+            // Find the corresponding select element
+            const selectElement = form.previousElementSibling.querySelector('select');
+
+            // Add new option to the select
+            const newOption = document.createElement('option');
+            newOption.value = vendorName;
+            newOption.textContent = vendorName;
+            newOption.selected = true;
+
+            // Insert before "Other..." option
+            const otherOption = selectElement.querySelector('option[value="Other..."]');
+            selectElement.insertBefore(newOption, otherOption);
+
+            // Hide the form
+            form.style.display = 'none';
+
+            // Show success message
+            alert(`Vendor "${vendorName}" has been added successfully!`);
+
+            // Clear form fields
+            const inputs = form.querySelectorAll('input, textarea');
+            inputs.forEach(input => input.value = '');
+        }
+
+        function cancelNewVendor(formId) {
+            const form = document.getElementById(formId);
+            const selectElement = form.previousElementSibling.querySelector('select');
+
+            // Reset select to first option
+            selectElement.selectedIndex = 0;
+
+            // Hide the form
+            form.style.display = 'none';
+
+            // Clear form fields
+            const inputs = form.querySelectorAll('input, textarea');
+            inputs.forEach(input => input.value = '');
+        }
+    </script>
+    </body>
+
+</html>

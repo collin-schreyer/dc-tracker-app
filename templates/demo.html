@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Center Project Tracker - Demo</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-black: #000000;
+            --primary-dark-blue: #1a237e;
+            --secondary-dark-blue: #283593;
+            --accent-blue: #3f51b5;
+            --text-light: #ffffff;
+            --text-secondary: #e0e0e0;
+            --success-green: #4caf50;
+            --error-red: #f44336;
+            --warning-orange: #ff9800;
+            --background-dark: #121212;
+            --surface-dark: #1e1e1e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body { 
+            margin: 0; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: var(--background-dark); 
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+        
+        .container { display: flex; height: 100%; }
+        
+        .sidebar { 
+            width: 300px; 
+            background: var(--surface-dark); 
+            padding: 20px; 
+            overflow-y: auto; 
+            border-right: 1px solid var(--secondary-dark-blue); 
+        }
+        
+        .map-container { flex: 1; }
+        #map { width: 100%; height: 100%; }
+        .filters { margin-bottom: 20px; }
+        .filter-group { margin-bottom: 15px; }
+        
+        .filter-group label { 
+            display: block; 
+            margin-bottom: 5px; 
+            font-weight: bold; 
+            color: var(--text-light); 
+        }
+        
+        .filter-group select, .filter-group input { 
+            width: 100%; 
+            padding: 8px; 
+            background: var(--background-dark); 
+            border: 1px solid var(--secondary-dark-blue); 
+            color: var(--text-light); 
+            border-radius: 4px;
+        }
+        
+        .filter-group select:focus, .filter-group input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+        
+        .project-list { max-height: 400px; overflow-y: auto; }
+        
+        .project-item { 
+            padding: 12px; 
+            border: 1px solid var(--secondary-dark-blue); 
+            margin-bottom: 10px; 
+            cursor: pointer; 
+            background: var(--background-dark);
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        
+        .project-item:hover { 
+            background: var(--secondary-dark-blue); 
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .project-item.open-slot { border-left: 4px solid var(--warning-orange); }
+        
+        .status-badge { 
+            display: inline-block; 
+            padding: 3px 10px; 
+            border-radius: 12px; 
+            font-size: 12px; 
+            color: white; 
+            font-weight: 500;
+        }
+        
+        .status-rumored { background: #6c757d; }
+        .status-permitting { background: var(--warning-orange); color: black; }
+        .status-approved { background: #17a2b8; }
+        .status-underconstruction { background: #fd7e14; }
+        .status-poweredlive { background: var(--success-green); }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary-black) 0%, var(--primary-dark-blue) 100%);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-text {
+            display: flex;
+            align-items: center;
+            font-family: 'Arial', sans-serif;
+            letter-spacing: 2px;
+            justify-self: start;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--text-light);
+            justify-self: center;
+        }
+
+        .theme-toggle {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 0.5rem 1rem;
+            color: var(--text-light);
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            justify-self: end;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .main-content {
+            height: calc(100vh - 120px);
+        }
+        
+        button {
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            background: var(--primary-dark-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        h2 {
+            color: var(--text-light);
+            margin-top: 0;
+        }
+        
+        /* Scrollbar styling */
+        .sidebar::-webkit-scrollbar, .project-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        .sidebar::-webkit-scrollbar-track, .project-list::-webkit-scrollbar-track {
+            background: var(--surface-dark);
+        }
+        .sidebar::-webkit-scrollbar-thumb, .project-list::-webkit-scrollbar-thumb {
+            background: var(--secondary-dark-blue);
+            border-radius: 4px;
+        }
+        .sidebar::-webkit-scrollbar-thumb:hover, .project-list::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-blue);
+        }
+        
+        /* Gulf of America label styling */
+        .gulf-label {
+            background: none !important;
+            border: none !important;
+            pointer-events: none;
+        }
+        .gulf-label div {
+            background: none !important;
+            border: none !important;
+        }
+
+        /* Light Theme Overrides */
+        body.light-theme {
+            --primary-black: #ffffff;
+            --primary-dark-blue: #1976d2;
+            --secondary-dark-blue: #1565c0;
+            --accent-blue: #2196f3;
+            --text-light: #333333;
+            --text-secondary: #666666;
+            --success-green: #4caf50;
+            --error-red: #f44336;
+            --warning-orange: #ff9800;
+            --background-dark: #f5f5f5;
+            --surface-dark: #ffffff;
+        }
+
+        body.light-theme .header {
+            background: linear-gradient(135deg, #ffffff 0%, #1976d2 100%);
+            color: #333333;
+        }
+
+        body.light-theme .logo-text span:first-child {
+            color: #00acc1;
+        }
+
+        body.light-theme .logo-text span:last-child {
+            color: #1976d2;
+        }
+
+        body.light-theme .filter-group select, 
+        body.light-theme .filter-group input {
+            background: #ffffff;
+            color: #333333;
+        }
+
+        body.light-theme .project-item {
+            background: #ffffff;
+            border-color: #1976d2;
+        }
+
+        body.light-theme .project-item:hover {
+            background: #e3f2fd;
+        }
+
+        body.light-theme .theme-toggle {
+            background: rgba(0, 0, 0, 0.1);
+            border-color: rgba(0, 0, 0, 0.2);
+            color: #333333;
+        }
+
+        body.light-theme .theme-toggle:hover {
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Report Page Styles */
+        .report-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid #4a148c;
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .report-logo {
+            height: 50px;
+            width: auto;
+        }
+        
+        .report-title {
+            text-align: center;
+            flex: 1;
+            margin: 0 2rem;
+        }
+        
+        .report-date {
+            text-align: right;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        
+        .stat-box {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 5px;
+            text-align: center;
+            border-left: 4px solid #4a148c;
+        }
+        
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #4a148c;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+        
+        .leads-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+        }
+        
+        .leads-table th,
+        .leads-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            font-size: 0.9rem;
+        }
+        
+        .leads-table th {
+            background: #4a148c;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .priority-high { color: #d32f2f; font-weight: bold; }
+        .priority-medium { color: #f57c00; }
+        .priority-low { color: #388e3c; }
+        
+        .opportunity-value {
+            font-weight: bold;
+            color: #4a148c;
+        }
+        
+        .report-footer {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .back-button:hover {
+            background: #0056b3;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo-text">
+            <span style="color: #00bcd4; font-weight: bold; font-size: 1.8rem;">CONDUX</span>
+            <span style="color: #666; margin: 0 0.5rem;">|</span>
+            <span style="color: #3f51b5; font-weight: bold; font-size: 1.8rem;">TESMEC</span>
+        </div>
+        <h1>Data Center Project Tracker</h1>
+        <button class="theme-toggle" onclick="toggleTheme()" id="theme-toggle">
+            <i class="fas fa-sun"></i> Light Mode
+        </button>
+    </div>
+    
+    <div class="main-content">
+        <div class="container">
+        <div class="sidebar">
+            <h2>Data Center Tracker</h2>
+            
+            <div class="filters">
+                <div class="filter-group">
+                    <label>Status:</label>
+                    <select id="statusFilter">
+                        <option value="">All Statuses</option>
+                        <option value="Rumored">Rumored</option>
+                        <option value="Permitting">Permitting</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Under Construction">Under Construction</option>
+                        <option value="Powered/Live">Powered/Live</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label>State:</label>
+                    <select id="stateFilter">
+                        <option value="">All States</option>
+                        <option value="">--- United States ---</option>
+                        <option value="AZ">Arizona</option>
+                        <option value="CO">Colorado</option>
+                        <option value="GA">Georgia</option>
+                        <option value="IL">Illinois</option>
+                        <option value="IN">Indiana</option>
+                        <option value="MI">Michigan</option>
+                        <option value="MN">Minnesota</option>
+                        <option value="MO">Missouri</option>
+                        <option value="NC">North Carolina</option>
+                        <option value="ND">North Dakota</option>
+                        <option value="NV">Nevada</option>
+                        <option value="NM">New Mexico</option>
+                        <option value="OH">Ohio</option>
+                        <option value="OR">Oregon</option>
+                        <option value="PA">Pennsylvania</option>
+                        <option value="TN">Tennessee</option>
+                        <option value="TX">Texas</option>
+                        <option value="UT">Utah</option>
+                        <option value="VA">Virginia</option>
+                        <option value="">--- Canada ---</option>
+                        <option value="AB">Alberta</option>
+                        <option value="BC">British Columbia</option>
+                        <option value="ON">Ontario</option>
+                        <option value="QC">Quebec</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label>Min MW:</label>
+                    <input type="number" id="minMwFilter" placeholder="e.g. 100">
+                </div>
+                
+                <div class="filter-group">
+                    <label>
+                        <input type="checkbox" id="openSlotsFilter"> 
+                        Open Opportunities Only
+                    </label>
+                </div>
+                
+                <button onclick="applyFilters()" style="width: 100%; padding: 10px; background: #007bff; color: white; border: none; cursor: pointer; margin-bottom: 10px;">
+                    Apply Filters
+                </button>
+                
+                <button onclick="showReportPage()" style="width: 100%; padding: 10px; background: #28a745; color: white; border: none; cursor: pointer; border-radius: 4px;">
+                    <i class="fas fa-file-alt"></i> View Lead Report
+                </button>
+            </div>
+            
+            <div class="project-list" id="projectList">
+                <!-- Projects will be loaded here -->
+            </div>
+        </div>
+        
+        <div class="map-container" id="mapView">
+            <div id="map"></div>
+        </div>
+        
+        <div class="report-container" id="reportView" style="display: none; flex: 1; background: white; color: #333; overflow-y: auto;">
+            <div class="report-content" style="padding: 2rem; font-family: Arial, sans-serif;">
+                <!-- Report content will be dynamically generated here -->
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        // Sample data embedded in the page
+        const sampleData = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-96.8317, 46.9719]
+                    },
+                    "properties": {
+                        "project_id": "1",
+                        "name": "Polaris Forge 2",
+                        "status": "Approved",
+                        "est_mw": 280,
+                        "owner": "Applied Digital",
+                        "developer": "Applied Digital",
+                        "epc": null,
+                        "line_builder": null,
+                        "city": "Harwood",
+                        "state": "ND",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-98.4936, 29.4241]
+                    },
+                    "properties": {
+                        "project_id": "2",
+                        "name": "Project Cinco",
+                        "status": "Under Construction",
+                        "est_mw": 300,
+                        "owner": "Rowan Digital",
+                        "developer": "Rowan Digital",
+                        "epc": "AEP Texas",
+                        "line_builder": null,
+                        "city": "San Antonio",
+                        "state": "TX",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-106.7637, 32.3199]
+                    },
+                    "properties": {
+                        "project_id": "3",
+                        "name": "Project Jupiter",
+                        "status": "Permitting",
+                        "est_mw": 500,
+                        "owner": "Stack Infrastructure",
+                        "developer": "BorderPlex",
+                        "epc": null,
+                        "line_builder": null,
+                        "city": "Las Cruces",
+                        "state": "NM",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-77.4360, 37.5407]
+                    },
+                    "properties": {
+                        "project_id": "4",
+                        "name": "Northern Virginia Campus",
+                        "status": "Powered/Live",
+                        "est_mw": 150,
+                        "owner": "Digital Realty",
+                        "developer": "Digital Realty",
+                        "epc": "Turner Construction",
+                        "line_builder": "Dominion Energy",
+                        "city": "Ashburn",
+                        "state": "VA",
+                        "open_slot": false
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-76.8839, 40.2732]
+                    },
+                    "properties": {
+                        "project_id": "5",
+                        "name": "PowerHouse Carlisle",
+                        "status": "Approved",
+                        "est_mw": 400,
+                        "owner": "PowerHouse Data Centers",
+                        "developer": "PowerHouse JV",
+                        "epc": null,
+                        "line_builder": null,
+                        "city": "Carlisle",
+                        "state": "PA",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-76.3057, 40.0379]
+                    },
+                    "properties": {
+                        "project_id": "6",
+                        "name": "Lancaster AI Campus",
+                        "status": "Under Construction",
+                        "est_mw": 750,
+                        "owner": "CoreWeave",
+                        "developer": "CoreWeave",
+                        "epc": "Mortenson Construction",
+                        "line_builder": null,
+                        "city": "Lancaster",
+                        "state": "PA",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-112.0740, 33.4484]
+                    },
+                    "properties": {
+                        "project_id": "7",
+                        "name": "Phoenix West Campus",
+                        "status": "Permitting",
+                        "est_mw": 320,
+                        "owner": "CyrusOne",
+                        "developer": "CyrusOne",
+                        "epc": null,
+                        "line_builder": null,
+                        "city": "Phoenix",
+                        "state": "AZ",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-115.1398, 36.1699]
+                    },
+                    "properties": {
+                        "project_id": "8",
+                        "name": "Vegas Valley DC",
+                        "status": "Approved",
+                        "est_mw": 200,
+                        "owner": "Switch",
+                        "developer": "Switch",
+                        "epc": null,
+                        "line_builder": null,
+                        "city": "Las Vegas",
+                        "state": "NV",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-123.0351, 44.9429]
+                    },
+                    "properties": {
+                        "project_id": "9",
+                        "name": "Hillsboro Hyperscale",
+                        "status": "Under Construction",
+                        "est_mw": 450,
+                        "owner": "Meta",
+                        "developer": "Meta",
+                        "epc": "DPR Construction",
+                        "line_builder": null,
+                        "city": "Hillsboro",
+                        "state": "OR",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-97.7431, 30.2672]
+                    },
+                    "properties": {
+                        "project_id": "10",
+                        "name": "Austin Edge Campus",
+                        "status": "Rumored",
+                        "est_mw": 180,
+                        "owner": "EdgeCore Digital",
+                        "developer": "EdgeCore Digital",
+                        "epc": null,
+                        "line_builder": null,
+                        "city": "Austin",
+                        "state": "TX",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-81.6557, 41.4993]
+                    },
+                    "properties": {
+                        "project_id": "11",
+                        "name": "Cleveland Data Hub",
+                        "status": "Approved",
+                        "est_mw": 250,
+                        "owner": "QTS Realty Trust",
+                        "developer": "QTS",
+                        "epc": null,
+                        "line_builder": null,
+                        "city": "Cleveland",
+                        "state": "OH",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-95.3698, 29.7604]
+                    },
+                    "properties": {
+                        "project_id": "12",
+                        "name": "Houston Energy District",
+                        "status": "Permitting",
+                        "est_mw": 600,
+                        "owner": "Microsoft",
+                        "developer": "Microsoft",
+                        "epc": null,
+                        "line_builder": null,
+                        "city": "Houston",
+                        "state": "TX",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-79.3832, 43.6532]
+                    },
+                    "properties": {
+                        "project_id": "13",
+                        "name": "Toronto Hyperscale Campus",
+                        "status": "Approved",
+                        "est_mw": 350,
+                        "owner": "Digital Realty",
+                        "developer": "Digital Realty",
+                        "epc": null,
+                        "line_builder": null,
+                        "city": "Toronto",
+                        "state": "ON",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-73.5673, 45.5017]
+                    },
+                    "properties": {
+                        "project_id": "14",
+                        "name": "Montreal AI Center",
+                        "status": "Under Construction",
+                        "est_mw": 280,
+                        "owner": "Google",
+                        "developer": "Google",
+                        "epc": "PCL Construction",
+                        "line_builder": null,
+                        "city": "Montreal",
+                        "state": "QC",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-123.1207, 49.2827]
+                    },
+                    "properties": {
+                        "project_id": "15",
+                        "name": "Vancouver Cloud Campus",
+                        "status": "Permitting",
+                        "est_mw": 200,
+                        "owner": "Amazon Web Services",
+                        "developer": "AWS",
+                        "epc": null,
+                        "line_builder": null,
+                        "city": "Vancouver",
+                        "state": "BC",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-113.4909, 53.5461]
+                    },
+                    "properties": {
+                        "project_id": "16",
+                        "name": "Calgary Energy Hub",
+                        "status": "Approved",
+                        "est_mw": 150,
+                        "owner": "Microsoft",
+                        "developer": "Microsoft",
+                        "epc": null,
+                        "line_builder": null,
+                        "city": "Calgary",
+                        "state": "AB",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-84.3880, 33.7490]
+                    },
+                    "properties": {
+                        "project_id": "17",
+                        "name": "Atlanta Edge Campus",
+                        "status": "Under Construction",
+                        "est_mw": 320,
+                        "owner": "Microsoft",
+                        "developer": "Microsoft",
+                        "epc": "Turner Construction",
+                        "line_builder": null,
+                        "city": "Atlanta",
+                        "state": "GA",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-80.8431, 35.2271]
+                    },
+                    "properties": {
+                        "project_id": "18",
+                        "name": "Charlotte Data Hub",
+                        "status": "Approved",
+                        "est_mw": 180,
+                        "owner": "Digital Realty",
+                        "developer": "Digital Realty",
+                        "epc": null,
+                        "line_builder": null,
+                        "city": "Charlotte",
+                        "state": "NC",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-86.7816, 36.1627]
+                    },
+                    "properties": {
+                        "project_id": "19",
+                        "name": "Nashville Cloud Center",
+                        "status": "Permitting",
+                        "est_mw": 240,
+                        "owner": "Amazon",
+                        "developer": "Amazon Web Services",
+                        "epc": null,
+                        "line_builder": null,
+                        "city": "Nashville",
+                        "state": "TN",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-90.0715, 35.1495]
+                    },
+                    "properties": {
+                        "project_id": "20",
+                        "name": "Memphis Distribution Center",
+                        "status": "Approved",
+                        "est_mw": 160,
+                        "owner": "FedEx",
+                        "developer": "Stream Data Centers",
+                        "epc": null,
+                        "line_builder": null,
+                        "city": "Memphis",
+                        "state": "TN",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-87.6298, 41.8781]
+                    },
+                    "properties": {
+                        "project_id": "21",
+                        "name": "Chicago Hyperscale",
+                        "status": "Under Construction",
+                        "est_mw": 450,
+                        "owner": "Meta",
+                        "developer": "Meta",
+                        "epc": "DPR Construction",
+                        "line_builder": null,
+                        "city": "Chicago",
+                        "state": "IL",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-93.2650, 44.9778]
+                    },
+                    "properties": {
+                        "project_id": "22",
+                        "name": "Minneapolis Data Campus",
+                        "status": "Approved",
+                        "est_mw": 200,
+                        "owner": "Google",
+                        "developer": "Google",
+                        "epc": null,
+                        "line_builder": null,
+                        "city": "Minneapolis",
+                        "state": "MN",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-83.0458, 42.3314]
+                    },
+                    "properties": {
+                        "project_id": "23",
+                        "name": "Detroit Edge Facility",
+                        "status": "Rumored",
+                        "est_mw": 120,
+                        "owner": "EdgeCore Digital",
+                        "developer": "EdgeCore Digital",
+                        "epc": null,
+                        "line_builder": null,
+                        "city": "Detroit",
+                        "state": "MI",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-94.6859, 39.0997]
+                    },
+                    "properties": {
+                        "project_id": "24",
+                        "name": "Kansas City Cloud Hub",
+                        "status": "Approved",
+                        "est_mw": 280,
+                        "owner": "Google",
+                        "developer": "Google",
+                        "epc": null,
+                        "line_builder": null,
+                        "city": "Kansas City",
+                        "state": "MO",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-104.9903, 39.7392]
+                    },
+                    "properties": {
+                        "project_id": "25",
+                        "name": "Denver Mountain Campus",
+                        "status": "Permitting",
+                        "est_mw": 220,
+                        "owner": "Microsoft",
+                        "developer": "Microsoft",
+                        "epc": null,
+                        "line_builder": null,
+                        "city": "Denver",
+                        "state": "CO",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-111.8910, 40.7608]
+                    },
+                    "properties": {
+                        "project_id": "26",
+                        "name": "Salt Lake Data Center",
+                        "status": "Approved",
+                        "est_mw": 180,
+                        "owner": "Meta",
+                        "developer": "Meta",
+                        "epc": null,
+                        "line_builder": null,
+                        "city": "Salt Lake City",
+                        "state": "UT",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-86.1581, 39.7684]
+                    },
+                    "properties": {
+                        "project_id": "27",
+                        "name": "Indianapolis Logistics Hub",
+                        "status": "Under Construction",
+                        "est_mw": 300,
+                        "owner": "Amazon",
+                        "developer": "Amazon Web Services",
+                        "epc": "Turner Construction",
+                        "line_builder": null,
+                        "city": "Indianapolis",
+                        "state": "IN",
+                        "open_slot": true
+                    }
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [-90.1994, 38.6270]
+                    },
+                    "properties": {
+                        "project_id": "28",
+                        "name": "St. Louis Gateway Center",
+                        "status": "Approved",
+                        "est_mw": 190,
+                        "owner": "Digital Realty",
+                        "developer": "Digital Realty",
+                        "epc": null,
+                        "line_builder": null,
+                        "city": "St. Louis",
+                        "state": "MO",
+                        "open_slot": true
+                    }
+                }
+            ]
+        };
+
+        // Initialize Leaflet map (no API key required)
+        const map = L.map('map').setView([39.8283, -98.5795], 4);
+
+        // Map tile layers for different themes
+        const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap contributors © CARTO',
+            subdomains: 'abcd',
+            maxZoom: 19
+        });
+
+        const lightTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap contributors © CARTO',
+            subdomains: 'abcd',
+            maxZoom: 19
+        });
+
+        // Add default dark tiles
+        darkTiles.addTo(map);
+
+        // Add custom "Gulf of America" label
+        let gulfLabel = L.marker([26.0, -90.0], {
+            icon: L.divIcon({
+                className: 'gulf-label',
+                html: '<div id="gulf-text" style="color: var(--text-secondary); font-size: 12px; font-weight: normal; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); white-space: nowrap; transform: rotate(-15deg); font-family: Arial, sans-serif;">Gulf of America</div>',
+                iconSize: [100, 16],
+                iconAnchor: [50, 8]
+            })
+        }).addTo(map);
+
+
+
+        let currentProjects = sampleData.features;
+        let projectMarkers = [];
+
+        // Contractor intelligence data
+        const contractorIntelligence = {
+            "Meta": {
+                "primary_contractors": ["Mortenson Construction (EPC)", "DPR Construction (EPC)", "Quanta Services (Line Builder)"],
+                "typical_partners": ["Hensel Phelps", "AECOM", "MasTec"],
+                "opportunity_value": "$2M - $15M per facility"
+            },
+            "Amazon": {
+                "primary_contractors": ["Turner Construction (EPC)", "Kiewit Corporation (Line Builder)", "PAR Electrical (Electrical)"],
+                "typical_partners": ["Skanska", "Clark Construction", "Henkels & McCoy"],
+                "opportunity_value": "$3M - $20M per facility"
+            },
+            "Amazon Web Services": {
+                "primary_contractors": ["Turner Construction (EPC)", "Kiewit Corporation (Line Builder)", "PAR Electrical (Electrical)"],
+                "typical_partners": ["Skanska", "Clark Construction", "Henkels & McCoy"],
+                "opportunity_value": "$3M - $20M per facility"
+            },
+            "AWS": {
+                "primary_contractors": ["Turner Construction (EPC)", "Kiewit Corporation (Line Builder)", "PAR Electrical (Electrical)"],
+                "typical_partners": ["Skanska", "Clark Construction", "Henkels & McCoy"],
+                "opportunity_value": "$3M - $20M per facility"
+            },
+            "Apple": {
+                "primary_contractors": ["DPR Construction (EPC)", "Cupertino Electric (Electrical)", "Rosendin Electric (Electrical)"],
+                "typical_partners": ["Holder Construction", "McCarthy Building", "IES Commercial"],
+                "opportunity_value": "$1M - $10M per facility"
+            },
+            "Google": {
+                "primary_contractors": ["Turner Construction (EPC)", "MYR Group (Line Builder)", "Sturgeon Electric (Electrical)"],
+                "typical_partners": ["DPR Construction", "Mortenson Construction", "PCL Construction"],
+                "opportunity_value": "$2M - $18M per facility"
+            },
+            "Microsoft": {
+                "primary_contractors": ["Turner Construction (EPC)", "Quanta Services (Line Builder)", "EMCOR Group (Electrical)"],
+                "typical_partners": ["Skanska", "DPR Construction", "MasTec"],
+                "opportunity_value": "$3M - $25M per facility"
+            },
+            "Digital Realty": {
+                "primary_contractors": ["Turner Construction (EPC)", "Skanska (EPC)", "EMCOR Group (Electrical)"],
+                "typical_partners": ["DPR Construction", "Rosendin Electric"],
+                "opportunity_value": "$1M - $8M per facility"
+            },
+            "CoreWeave": {
+                "primary_contractors": ["Mortenson Construction (EPC)", "Quanta Services (Line Builder)"],
+                "typical_partners": ["DPR Construction", "MYR Group"],
+                "opportunity_value": "$2M - $12M per facility"
+            },
+            "FedEx": {
+                "primary_contractors": ["Turner Construction (EPC)", "Stream Data Centers (Developer)", "EMCOR Group (Electrical)"],
+                "typical_partners": ["Skanska", "DPR Construction", "MasTec"],
+                "opportunity_value": "$1M - $8M per facility"
+            },
+            "EdgeCore Digital": {
+                "primary_contractors": ["DPR Construction (EPC)", "Quanta Services (Line Builder)", "Rosendin Electric (Electrical)"],
+                "typical_partners": ["Turner Construction", "MYR Group", "EMCOR Group"],
+                "opportunity_value": "$800K - $6M per facility"
+            },
+            "Stream Data Centers": {
+                "primary_contractors": ["Turner Construction (EPC)", "EMCOR Group (Electrical)", "MasTec (Line Builder)"],
+                "typical_partners": ["Skanska", "DPR Construction", "Quanta Services"],
+                "opportunity_value": "$1M - $7M per facility"
+            },
+            "Default": {
+                "primary_contractors": ["Turner Construction", "DPR Construction", "Quanta Services"],
+                "typical_partners": ["Skanska", "Mortenson Construction", "MasTec"],
+                "opportunity_value": "$1M - $10M per facility"
+            }
+        };
+
+        function getContractorInfo(owner) {
+            return contractorIntelligence[owner] || contractorIntelligence["Default"];
+        }
+
+        // Load projects on page load
+        window.onload = function() {
+            updateMap(sampleData);
+            updateProjectList(sampleData.features);
+        };
+
+        function getMarkerColor(status, openSlot) {
+            if (openSlot) return '#ff6b35'; // Orange for open opportunities
+            
+            switch(status) {
+                case 'Rumored': return '#6c757d';
+                case 'Permitting': return '#ffc107';
+                case 'Approved': return '#17a2b8';
+                case 'Under Construction': return '#fd7e14';
+                case 'Powered/Live': return '#28a745';
+                default: return '#333333';
+            }
+        }
+
+        function getMarkerSize(mw) {
+            if (mw < 100) return 15;
+            if (mw < 300) return 20;
+            if (mw < 500) return 25;
+            return 30;
+        }
+
+        function updateMap(geojson) {
+            // Clear existing markers
+            projectMarkers.forEach(marker => map.removeLayer(marker));
+            projectMarkers = [];
+
+            // Add new markers
+            geojson.features.forEach(feature => {
+                const props = feature.properties;
+                const coords = feature.geometry.coordinates;
+                const color = getMarkerColor(props.status, props.open_slot);
+                const size = getMarkerSize(props.est_mw);
+
+                // Create custom marker
+                const marker = L.circleMarker([coords[1], coords[0]], {
+                    radius: size,
+                    fillColor: color,
+                    color: '#ffffff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                });
+
+                // Add popup
+                const openRoles = [];
+                if (!props.epc) openRoles.push('EPC');
+                if (!props.line_builder) openRoles.push('Line Builder');
+
+                // Get contractor intelligence for this owner
+                const contractorInfo = getContractorInfo(props.owner);
+                
+                const popupContent = `
+                    <div style="max-width: 400px; font-size: 13px;">
+                        <h3 style="margin-bottom: 10px; color: #333;">${props.name || 'Unnamed Project'}</h3>
+                        
+                        <div style="margin-bottom: 12px;">
+                            <p style="margin: 3px 0;"><strong>Location:</strong> ${props.city}, ${props.state}</p>
+                            <p style="margin: 3px 0;"><strong>Status:</strong> ${props.status}</p>
+                            <p style="margin: 3px 0;"><strong>Capacity:</strong> ${props.est_mw || 'Unknown'} MW</p>
+                            <p style="margin: 3px 0;"><strong>Owner:</strong> ${props.owner || 'Unknown'}</p>
+                            <p style="margin: 3px 0;"><strong>Developer:</strong> ${props.developer || 'Unknown'}</p>
+                            ${props.epc ? `<p style="margin: 3px 0;"><strong>EPC:</strong> ${props.epc}</p>` : ''}
+                            ${props.line_builder ? `<p style="margin: 3px 0;"><strong>Line Builder:</strong> ${props.line_builder}</p>` : ''}
+                        </div>
+
+                        ${props.open_slot ? `
+                        <div style="background: #fff3e0; padding: 8px; border-radius: 4px; border-left: 4px solid #ff6b35; margin-bottom: 12px;">
+                            <p style="margin: 0; color: #ff6b35; font-weight: bold;">🎯 Open Opportunities: ${openRoles.join(', ')}</p>
+                            <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">Estimated Value: ${contractorInfo.opportunity_value}</p>
+                        </div>
+                        ` : ''}
+
+                        <div style="background: #f8f9fa; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
+                            <p style="margin: 0 0 4px 0; font-weight: bold; color: #333;">🏗️ ${props.owner}'s Typical Contractors:</p>
+                            <p style="margin: 0; font-size: 12px; color: #555;">${contractorInfo.primary_contractors.join(' • ')}</p>
+                        </div>
+
+                        <div style="background: #e8f4fd; padding: 8px; border-radius: 4px;">
+                            <p style="margin: 0 0 4px 0; font-weight: bold; color: #333;">💡 Condux Tesmec Opportunities:</p>
+                            <p style="margin: 0; font-size: 12px; color: #555;">
+                                • Underground cable installation<br>
+                                • Generator interconnection<br>
+                                • Substation construction<br>
+                                • Emergency power systems
+                            </p>
+                        </div>
+                    </div>
+                `;
+
+                marker.bindPopup(popupContent);
+                marker.addTo(map);
+                projectMarkers.push(marker);
+            });
+        }
+
+        function updateProjectList(projects) {
+            const listContainer = document.getElementById('projectList');
+            listContainer.innerHTML = '';
+
+            projects.forEach(project => {
+                const props = project.properties;
+                const item = document.createElement('div');
+                item.className = `project-item ${props.open_slot ? 'open-slot' : ''}`;
+                
+                const statusClass = props.status.toLowerCase().replace(/[^a-z]/g, '');
+                
+                item.innerHTML = `
+                    <div style="font-weight: bold;">${props.name || 'Unnamed Project'}</div>
+                    <div>${props.city}, ${props.state}</div>
+                    <div>
+                        <span class="status-badge status-${statusClass}">${props.status}</span>
+                        ${props.est_mw ? `${props.est_mw} MW` : ''}
+                    </div>
+                    <div style="font-size: 12px; color: #666;">
+                        Owner: ${props.owner || 'Unknown'}
+                        ${props.open_slot ? '<br><strong style="color: #ff6b35;">Open Opportunities Available</strong>' : ''}
+                    </div>
+                `;
+                
+                item.onclick = () => {
+                    const coords = project.geometry.coordinates;
+                    map.setView([coords[1], coords[0]], 10);
+                    
+                    // Find and open the marker popup
+                    projectMarkers.forEach(marker => {
+                        const markerLatLng = marker.getLatLng();
+                        if (Math.abs(markerLatLng.lat - coords[1]) < 0.001 && 
+                            Math.abs(markerLatLng.lng - coords[0]) < 0.001) {
+                            marker.openPopup();
+                        }
+                    });
+                };
+                
+                listContainer.appendChild(item);
+            });
+        }
+
+
+
+        function applyFilters() {
+            let filteredFeatures = sampleData.features.filter(feature => {
+                const props = feature.properties;
+                
+                const status = document.getElementById('statusFilter').value;
+                if (status && props.status !== status) return false;
+                
+                const state = document.getElementById('stateFilter').value;
+                if (state && props.state !== state) return false;
+                
+                const minMw = document.getElementById('minMwFilter').value;
+                if (minMw && props.est_mw < parseFloat(minMw)) return false;
+                
+                const openSlots = document.getElementById('openSlotsFilter').checked;
+                if (openSlots && !props.open_slot) return false;
+                
+                return true;
+            });
+            
+            const filteredData = {
+                type: "FeatureCollection",
+                features: filteredFeatures
+            };
+            
+            // Update map
+            updateMap(filteredData);
+            
+            // Update list
+            updateProjectList(filteredFeatures);
+        }
+
+        function showReportPage() {
+            // Hide map view and show report view
+            document.getElementById('mapView').style.display = 'none';
+            document.getElementById('reportView').style.display = 'flex';
+            
+            // Add back button
+            const backButton = document.createElement('button');
+            backButton.className = 'back-button';
+            backButton.innerHTML = '<i class="fas fa-arrow-left"></i> Back to Map';
+            backButton.onclick = function() {
+                document.getElementById('mapView').style.display = 'flex';
+                document.getElementById('reportView').style.display = 'none';
+                document.body.removeChild(backButton);
+            };
+            document.body.appendChild(backButton);
+            // Get current filtered data
+            const status = document.getElementById('statusFilter').value;
+            const state = document.getElementById('stateFilter').value;
+            const minMw = document.getElementById('minMwFilter').value;
+            const openSlots = document.getElementById('openSlotsFilter').checked;
+            
+            let filteredFeatures = sampleData.features.filter(feature => {
+                const props = feature.properties;
+                
+                if (status && props.status !== status) return false;
+                if (state && props.state !== state) return false;
+                if (minMw && props.est_mw < parseFloat(minMw)) return false;
+                if (openSlots && !props.open_slot) return false;
+                
+                return true;
+            });
+
+            // Generate and display report content
+            const reportHTML = createReportHTML(filteredFeatures);
+            document.querySelector('.report-content').innerHTML = reportHTML;
+        }
+
+        function createReportHTML(projects) {
+            const totalProjects = projects.length;
+            const openOpportunities = projects.filter(p => p.properties.open_slot).length;
+            const totalCapacity = projects.reduce((sum, p) => sum + (p.properties.est_mw || 0), 0);
+            const estimatedValue = (totalCapacity * 2.5 / 1000).toFixed(1); // Rough estimate: $2.5M per MW, displayed in billions
+
+            let tableRows = '';
+            projects.forEach(project => {
+                const props = project.properties;
+                const openRoles = [];
+                if (!props.epc) openRoles.push('EPC');
+                if (!props.line_builder) openRoles.push('Line Builder');
+                
+                const contractorInfo = getContractorInfo(props.owner);
+                
+                tableRows += `
+                    <tr>
+                        <td>${props.name}</td>
+                        <td>${props.city}, ${props.state}</td>
+                        <td>${props.owner}</td>
+                        <td>${props.est_mw || 'TBD'} MW</td>
+                        <td>${props.status}</td>
+                        <td>${openRoles.join(', ') || 'None'}</td>
+                        <td style="font-weight: bold; color: #4a148c;">${contractorInfo.opportunity_value}</td>
+                        <td style="color: ${props.open_slot ? '#d32f2f' : '#388e3c'}; font-weight: bold;">
+                            ${props.open_slot ? 'HIGH' : 'LOW'}
+                        </td>
+                    </tr>
+                `;
+            });
+
+            return `
+                <div style="font-family: Arial, sans-serif; color: #333; background: white; padding: 20px;">
+                    <div class="report-header">
+                        <img src="http://media.licdn.com/dms/image/v2/D560BAQH_HHfEYQHORQ/company-logo_200_200/company-logo_200_200/0/1691173854408/condux_tesmec_inc__logo?e=2147483647&v=beta&t=ndL5qqx0kk_xj2RwGxNWWnHrffxLW2rs3gPf5stahbI" 
+                             alt="Condux Tesmec Logo" class="report-logo">
+                        <div class="report-title">
+                            <h2 style="margin: 0; color: #4a148c;">Data Center Opportunities Report</h2>
+                            <p style="margin: 5px 0; color: #666;">Prepared for Condux Tesmec Business Development</p>
+                        </div>
+                        <div class="report-date">
+                            <div>Generated: ${new Date().toLocaleDateString()}</div>
+                            <div>Report ID: RPT-${Date.now().toString().slice(-6)}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; margin-bottom: 2rem;">
+                        <button onclick="downloadReportPDF()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 1rem;">
+                            <i class="fas fa-download"></i> Download PDF Report
+                        </button>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 30px 0;">
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; text-align: center; border-left: 4px solid #4a148c;">
+                            <div style="font-size: 24px; font-weight: bold; color: #4a148c;">${totalProjects}</div>
+                            <div style="font-size: 14px; color: #666; margin-top: 5px;">Total Projects</div>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; text-align: center; border-left: 4px solid #4a148c;">
+                            <div style="font-size: 24px; font-weight: bold; color: #4a148c;">${openOpportunities}</div>
+                            <div style="font-size: 14px; color: #666; margin-top: 5px;">Open Opportunities</div>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; text-align: center; border-left: 4px solid #4a148c;">
+                            <div style="font-size: 24px; font-weight: bold; color: #4a148c;">${(totalCapacity/1000).toFixed(1)} GW</div>
+                            <div style="font-size: 14px; color: #666; margin-top: 5px;">Total Capacity</div>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; text-align: center; border-left: 4px solid #4a148c;">
+                            <div style="font-size: 24px; font-weight: bold; color: #4a148c;">$${estimatedValue}B</div>
+                            <div style="font-size: 14px; color: #666; margin-top: 5px;">Est. Market Value</div>
+                        </div>
+                    </div>
+
+                    <h3 style="color: #4a148c; margin: 30px 0 15px 0;">Executive Summary</h3>
+                    <p style="margin-bottom: 15px;">This report identifies <strong>${openOpportunities} high-priority data center opportunities</strong> across North America representing over <strong>${(totalCapacity/1000).toFixed(1)} GW of capacity</strong> and an estimated <strong>$${estimatedValue}B in potential transmission line work</strong>.</p>
+                    
+                    <ul style="margin: 15px 0 30px 30px;">
+                        <li><strong>${Math.round((openOpportunities/totalProjects)*100)}% of tracked projects</strong> have open contractor opportunities</li>
+                        <li><strong>Meta, Google, and Microsoft</strong> are the most active developers</li>
+                        <li><strong>Average project value</strong> ranges from $1M-$25M per facility</li>
+                    </ul>
+
+                    <h3 style="color: #4a148c; margin: 30px 0 15px 0;">Priority Opportunities</h3>
+                    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                        <thead>
+                            <tr style="background: #4a148c; color: white;">
+                                <th style="padding: 10px; text-align: left; font-size: 12px;">Project Name</th>
+                                <th style="padding: 10px; text-align: left; font-size: 12px;">Location</th>
+                                <th style="padding: 10px; text-align: left; font-size: 12px;">Owner</th>
+                                <th style="padding: 10px; text-align: left; font-size: 12px;">Capacity</th>
+                                <th style="padding: 10px; text-align: left; font-size: 12px;">Status</th>
+                                <th style="padding: 10px; text-align: left; font-size: 12px;">Open Roles</th>
+                                <th style="padding: 10px; text-align: left; font-size: 12px;">Est. Value</th>
+                                <th style="padding: 10px; text-align: left; font-size: 12px;">Priority</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
+
+                    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #666; font-size: 14px;">
+                        <p><strong>Condux Tesmec Inc.</strong> | Data Center Market Intelligence | Confidential Business Information</p>
+                        <p>This report contains proprietary market intelligence. Distribution limited to authorized personnel only.</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function downloadReportPDF() {
+            const reportContent = document.querySelector('.report-content');
+            
+            html2canvas(reportContent, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#ffffff'
+            }).then(canvas => {
+                const { jsPDF } = window.jspdf;
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                const imgWidth = 210;
+                const pageHeight = 295;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                let heightLeft = imgHeight;
+                let position = 0;
+
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+
+                while (heightLeft >= 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+
+                const fileName = `Data_Center_Opportunities_${new Date().toISOString().slice(0, 10)}.pdf`;
+                pdf.save(fileName);
+            });
+        }
+
+        // Theme toggle functionality
+        function toggleTheme() {
+            const body = document.body;
+            const toggleBtn = document.getElementById('theme-toggle');
+
+            if (body.classList.contains('light-theme')) {
+                // Switch to dark theme
+                body.classList.remove('light-theme');
+                toggleBtn.innerHTML = '<i class="fas fa-sun"></i> Light Mode';
+                localStorage.setItem('dc-tracker-theme', 'dark');
+                
+                // Switch to dark map tiles
+                map.removeLayer(lightTiles);
+                darkTiles.addTo(map);
+            } else {
+                // Switch to light theme
+                body.classList.add('light-theme');
+                toggleBtn.innerHTML = '<i class="fas fa-moon"></i> Dark Mode';
+                localStorage.setItem('dc-tracker-theme', 'light');
+                
+                // Switch to light map tiles
+                map.removeLayer(darkTiles);
+                lightTiles.addTo(map);
+            }
+        }
+
+        // Load saved theme on page load
+        window.addEventListener('DOMContentLoaded', function () {
+            const savedTheme = localStorage.getItem('dc-tracker-theme');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-theme');
+                document.getElementById('theme-toggle').innerHTML = '<i class="fas fa-moon"></i> Dark Mode';
+                
+                // Switch to light map tiles
+                map.removeLayer(darkTiles);
+                lightTiles.addTo(map);
+            }
+        });
+    </script>
+</body>
+</html>
