@@ -7,6 +7,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# --- Serverless SQLite Bridge (Vercel Fix) ---
+# Vercel wipes the /tmp/ directory constantly. If the DB is missing, auto-seed it on cold boot.
+db_url = os.getenv('DATABASE_URL', '')
+if db_url.startswith('sqlite:////tmp/'):
+    tmp_path = db_url.replace('sqlite:///', '')
+    if not os.path.exists(tmp_path):
+        from seed_data import seed_database
+        # seed_database() internally calls init_db() and commits the 40 projects
+        seed_database()
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key')
 CORS(app)
